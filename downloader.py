@@ -1,12 +1,32 @@
 #!/usr/bin/env python
 # coding: utf-8
+"""
+arabic-toons-downloader - API-less arabic-toons movies and series downloader
 
+Usage:
+    downloader.py movie <movie_url> [<directory>]
+    downloader.py episode <episode_url> [<directory>]
+    downloader.py series <series_url> [<directory>] [options]
+    downloader.py (-h | --help | --version | --usage)
+
+Options:
+    -e EPISODES, --episodes EPISODES        Maximum number of new files to download
+                                            EPISODES must be in format "2 5 3-7"
+    -h, --help                              Display this message and quit
+    --version                               Show program version and quit
+"""
 import os
 import re
+import sys
 
 import bs4
+import docopt
 import librtmp
 import requests
+
+__author__ = "mohan3d"
+__author_email__ = "mohan3d94@gmail.com"
+__version__ = "0.1.0"
 
 
 class PageParser:
@@ -101,3 +121,25 @@ class ATDownloader:
 
             for episode in range(int(start), int(end) + 1):
                 yield episode
+
+
+def main(argv=sys.argv[1:]):
+    args = docopt.docopt(__doc__, argv, version='arabic-toons-downloader {}'.format(__version__))
+
+    downloader = ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
+
+    try:
+        if args.get('movie'):
+            downloader.download_movie(args.get('<movie_url>'))
+        elif args.get('episode'):
+            downloader.download_movie(args.get('<episode_url>'))
+        elif args.get('series'):
+            downloader.download_series(args.get('<series_url>'),
+                                       specific_episodes=args.get('--episodes'))
+    except:
+        # Temporary
+        pass
+
+
+if __name__ == "__main__":
+    main()
