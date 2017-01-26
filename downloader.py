@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import re
 
 import bs4
@@ -58,13 +59,45 @@ class VideoDownloader:
         self.url = video_url
         self.conn = librtmp.RTMP(self.url, live=True)
 
-    def download(self):
+    def download(self, directory):
         self.conn.connect()
         stream = self.conn.create_stream()
 
-        with open(self._get_file_name(), 'wb') as f:
+        with open(os.path.join(directory, self._get_file_name()), 'wb') as f:
             for data in stream:
                 f.write(data)
 
     def _get_file_name(self, ext='flv'):
         return "{0}.{1}".format(self.url.split('/')[-1].split('.')[0], ext)
+
+
+class ATDownloader:
+    def __init__(self, directory):
+        self.directory = directory
+
+        if self.directory is not None and not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
+    def _download_video(self, url):
+        stream_url = VideoParser().get_stream_url(url)
+        VideoDownloader(stream_url).download(self.directory)
+
+    def download_movie(self, movie_url):
+        self._download_video(movie_url)
+
+    def download_series(self, series_url, specific_episodes=None):
+        episodes_urls = SeriesParser().get_episodes_urls(series_url)
+
+        for episode_index in self._parse_episodes(specific_episodes):
+            if 0 <= episode_index - 1 < len(episodes_urls):
+                self._download_video(episodes_urls[episode_index - 1])
+
+    def _parse_episodes(self, episodes_str):
+        for episodes_range in episodes_str.split():
+            p = episodes_range.split('-')
+
+            start = end = p[0]
+            end = p[1] if len(p) == 2 else end
+
+            for episode in range(int(start), int(end) + 1):
+                yield episode
