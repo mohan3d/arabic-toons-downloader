@@ -26,7 +26,7 @@ import requests
 
 __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 class PageParser:
