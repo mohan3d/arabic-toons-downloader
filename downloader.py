@@ -109,7 +109,7 @@ class ATDownloader:
         episodes_urls = SeriesParser().get_episodes_urls(series_url)
 
         if specific_episodes:
-            parsed_episodes = self._parse_episodes(specific_episodes)
+            parsed_episodes = list(self._parse_episodes(specific_episodes))
             episodes_urls = [url for i, url in enumerate(episodes_urls, 1)
                              if i in parsed_episodes]
 
