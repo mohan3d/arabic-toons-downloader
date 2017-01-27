@@ -42,7 +42,7 @@ class PageParser:
         })
 
     def _html(self, url):
-        return self.session.get(url).content.decode()
+        return self.session.get(url).content.decode('utf-8')
 
     def _parse(self, html):
         raise NotImplementedError()
