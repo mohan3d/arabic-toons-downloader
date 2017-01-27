@@ -108,9 +108,13 @@ class ATDownloader:
     def download_series(self, series_url, specific_episodes=None):
         episodes_urls = SeriesParser().get_episodes_urls(series_url)
 
-        for episode_index in self._parse_episodes(specific_episodes):
-            if 0 <= episode_index - 1 < len(episodes_urls):
-                self._download_video(episodes_urls[episode_index - 1])
+        if specific_episodes:
+            parsed_episodes = self._parse_episodes(specific_episodes)
+            episodes_urls = [url for i, url in enumerate(episodes_urls, 1)
+                             if i in parsed_episodes]
+
+        for episode_url in episodes_urls:
+            self._download_video(episode_url)
 
     def _parse_episodes(self, episodes_str):
         for episodes_range in episodes_str.split():
