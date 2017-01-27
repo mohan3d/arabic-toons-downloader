@@ -19,8 +19,6 @@ Installation
 Usage
 -----
 
-InstaLooter comes with its CLI:
-
 .. code-block:: console
 
     $ python downloader.py movie <movie_url> [<directory>]
