@@ -116,7 +116,8 @@ class ATDownloader:
         for episode_url in episodes_urls:
             self._download_video(episode_url)
 
-    def _parse_episodes(self, episodes_str):
+    @staticmethod
+    def _parse_episodes(episodes_str):
         for episodes_range in episodes_str.split():
             p = episodes_range.split('-')
 
@@ -132,17 +133,13 @@ def main(argv=sys.argv[1:]):
 
     downloader = ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
 
-    try:
-        if args.get('movie'):
-            downloader.download_movie(args.get('<movie_url>'))
-        elif args.get('episode'):
-            downloader.download_movie(args.get('<episode_url>'))
-        elif args.get('series'):
-            downloader.download_series(args.get('<series_url>'),
-                                       specific_episodes=args.get('--episodes'))
-    except:
-        # Temporary
-        pass
+    if args.get('movie'):
+        downloader.download_movie(args.get('<movie_url>'))
+    elif args.get('episode'):
+        downloader.download_movie(args.get('<episode_url>'))
+    elif args.get('series'):
+        downloader.download_series(args.get('<series_url>'),
+                                   specific_episodes=args.get('--episodes'))
 
 
 if __name__ == "__main__":
