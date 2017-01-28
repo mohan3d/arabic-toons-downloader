@@ -138,13 +138,16 @@ def main(argv=sys.argv[1:]):
     downloader = ATDownloader(
         directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
 
-    if args.get('movie'):
-        downloader.download_movie(args.get('<movie_url>'))
-    elif args.get('episode'):
-        downloader.download_movie(args.get('<episode_url>'))
-    elif args.get('series'):
-        downloader.download_series(args.get('<series_url>'),
-                                   specific_episodes=args.get('--episodes'))
+    try:
+        if args.get('movie'):
+            downloader.download_movie(args.get('<movie_url>'))
+        elif args.get('episode'):
+            downloader.download_movie(args.get('<episode_url>'))
+        elif args.get('series'):
+            downloader.download_series(args.get('<series_url>'),
+                                       args.get('--episodes'))
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
