@@ -10,8 +10,9 @@ Usage:
     downloader.py (-h | --help | --version | --usage)
 
 Options:
-    -e EPISODES, --episodes EPISODES        Maximum number of new files to download
-                                            EPISODES must be in format "2 5 3-7"
+    -e EPISODES, --episodes EPISODES        Maximum number of new files
+                                            to download EPISODES must be
+                                            in format "2 5 3-7"
     -h, --help                              Display this message and quit
     --version                               Show program version and quit
 """
@@ -26,13 +27,15 @@ import requests
 
 __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 class PageParser:
     def __init__(self):
         self.session = requests.session()
-        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"
+        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:50.0) " \
+                          "Gecko/20100101 Firefox/50.0"
+
         self.session.headers.update({
             'User-Agent': self.user_agent,
             'Accept': 'text/html',
@@ -53,7 +56,8 @@ class VideoParser(PageParser):
     _RX_STREAM_URL = re.compile(r'url: "(rtmp://[^"]+)"')
 
     def _parse(self, html):
-        page_data = requests.utils.unquote(self._RX_PAGE_DATA.search(html).group(1))
+        page_data = \
+            requests.utils.unquote(self._RX_PAGE_DATA.search(html).group(1))
         stream_url = self._RX_STREAM_URL.search(page_data)
         return stream_url.group(1)
 
@@ -129,9 +133,10 @@ class ATDownloader:
 
 
 def main(argv=sys.argv[1:]):
-    args = docopt.docopt(__doc__, argv, version='arabic-toons-downloader {}'.format(__version__))
+    args = docopt.docopt(__doc__, argv, version=__version__)
 
-    downloader = ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
+    downloader = ATDownloader(
+        directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
 
     if args.get('movie'):
         downloader.download_movie(args.get('<movie_url>'))
