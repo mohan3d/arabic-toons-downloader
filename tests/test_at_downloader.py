@@ -27,5 +27,25 @@ class TestVideoParser(unittest.TestCase):
                              "http://www.arabic-toons.com/beyblade-s2-1467019937-24996.html#sets"))
 
 
+class TestSeriesParser(unittest.TestCase):
+    def test_get_episodes_urls(self):
+        series_parser = downloader.SeriesParser()
+
+        self.assertEqual(35, len(series_parser.get_episodes_urls(
+            "http://www.arabic-toons.com/legend-tarzan-1405895019-anime-streaming.html")))
+
+        self.assertEqual(56, len(series_parser.get_episodes_urls(
+            "http://www.arabic-toons.com/calimero-s1-1405894466-anime-streaming.html")))
+
+        self.assertEqual(20, len(series_parser.get_episodes_urls(
+            "http://www.arabic-toons.com/madrast-kungfu-1405900472-anime-streaming.html")))
+
+        self.assertEqual(70, len(series_parser.get_episodes_urls(
+            "http://www.arabic-toons.com/al8na9-1407653461-anime-streaming.html")))
+
+        self.assertEqual(51, len(series_parser.get_episodes_urls(
+            "http://www.arabic-toons.com/sabeq-wa-la7eq-s1-1415604494-anime-streaming.html")))
+
+
 if __name__ == '__main__':
     unittest.main()
