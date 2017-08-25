@@ -29,6 +29,8 @@ __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
 __version__ = "0.1.2"
 
+ARABIC_TOONS_HOST = 'www.arabic-toons.com'
+
 
 class PageParser:
     def __init__(self):
@@ -41,7 +43,7 @@ class PageParser:
             'Accept': 'text/html',
             'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
-            'Host': 'www.arabic-toons.com',
+            'Host': ARABIC_TOONS_HOST,
         })
 
     def _html(self, url):
@@ -79,9 +81,11 @@ class SeriesParser(PageParser):
 
 
 class VideoDownloader:
+    HOST = 'http://' + ARABIC_TOONS_HOST
+
     def __init__(self, video_url):
         self.url = video_url
-        self.conn = librtmp.RTMP(self.url, live=True)
+        self.conn = librtmp.RTMP(self.url, live=True, pageurl=self.HOST)
 
     def download(self, directory):
         self.conn.connect()
