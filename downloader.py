@@ -27,7 +27,7 @@ import requests
 
 __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 ARABIC_TOONS_HOST = 'www.arabic-toons.com'
 
@@ -136,8 +136,8 @@ class ATDownloader:
                 yield episode
 
 
-def main(argv=sys.argv[1:]):
-    args = docopt.docopt(__doc__, argv, version=__version__)
+def main():
+    args = docopt.docopt(__doc__, argv=sys.argv[1:], version=__version__)
 
     downloader = ATDownloader(
         directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
