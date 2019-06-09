@@ -39,3 +39,20 @@ Examples
 
     Download Detective Conan movie 04
     $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html
+
+Docker
+------
+
+.. code-block:: console
+
+    Build docker image
+    $ docker build -t "arabic-toons-downloader" .
+
+    Create a new directory to save files locally
+    $ mkdir ~/toons
+
+    Run it
+    $ docker run --rm -v ~/toons:/toons/ -it arabic-toons-downloader <SAME OPTIONS FROM USAGE>
+
+    Example
+    $ docker run --rm -v ~/toons:/toons/ -it arabic-toons-downloader series http://www.arabic-toons.com/conan-s1-1405901146-anime-streaming.html /toons/conans1
