@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf-8
 """
 arabic-toons-downloader - API-less arabic-toons movies and series downloader
@@ -16,13 +16,15 @@ Options:
     -h, --help                              Display this message and quit
     --version                               Show program version and quit
 """
+import concurrent.futures
 import os
 import re
+import subprocess
 import sys
 
 import bs4
 import docopt
-import librtmp
+import m3u8
 import requests
 
 __author__ = "mohan3d"
@@ -30,6 +32,11 @@ __author_email__ = "mohan3d94@gmail.com"
 __version__ = "0.1.3"
 
 ARABIC_TOONS_HOST = 'www.arabic-toons.com'
+ARABIC_TOONS_USER_AGENT = {
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/90.0.4430.93 Safari/537.36 '
+}
 
 
 class PageParser:
@@ -39,7 +46,7 @@ class PageParser:
                           "Gecko/20100101 Firefox/50.0"
 
         self.session.headers.update({
-            'User-Agent': self.user_agent,
+            **ARABIC_TOONS_USER_AGENT,
             'Accept': 'text/html',
             'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
@@ -55,13 +62,10 @@ class PageParser:
 
 class VideoParser(PageParser):
     _RX_PAGE_DATA = re.compile(r"document\.write\(unescape\('([^']+)'\)\);")
-    _RX_STREAM_URL = re.compile(r'url: "(rtmp://[^"]+)"')
+    _RX_STREAM_URL = re.compile(r'<source src="(http://[^"]+)" type="application/x-mpegURL">')
 
     def _parse(self, html):
-        page_data = \
-            requests.utils.unquote(self._RX_PAGE_DATA.search(html).group(1))
-        stream_url = self._RX_STREAM_URL.search(page_data)
-        return stream_url.group(1)
+        return requests.utils.unquote(self._RX_STREAM_URL.search(html).group(1))
 
     def get_stream_url(self, url):
         html = self._html(url)
@@ -80,23 +84,40 @@ class SeriesParser(PageParser):
         return self._parse(html)
 
 
-class VideoDownloader:
-    HOST = 'http://' + ARABIC_TOONS_HOST
+class StreamDownloader:
+    def __init__(self, stream_url: str, filepath: str, workers: int = 16, ffmpeg: bool = False):
+        self.url = stream_url
+        self.path = filepath
+        self.workers = workers
+        self.ffmpeg = ffmpeg
 
-    def __init__(self, video_url):
-        self.url = video_url
-        self.conn = librtmp.RTMP(self.url, live=True, pageurl=self.HOST)
+        self.session = requests.session()
+        self.session.headers.update(ARABIC_TOONS_USER_AGENT)
 
-    def download(self, directory):
-        self.conn.connect()
-        stream = self.conn.create_stream()
+    def download(self, directory: str):
+        segments = self._get_segments()
+        filepath = os.path.join(directory, self.path) + '.ts'
 
-        with open(os.path.join(directory, self._get_file_name()), 'wb') as f:
-            for data in stream:
-                f.write(data)
+        if self.workers and self.workers > 1:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=self.workers) as executor:
+                responses = executor.map(self.session.get, segments)
+        else:
+            responses = [self.session.get(segment_url) for segment_url in segments]
 
-    def _get_file_name(self, ext='flv'):
-        return "{0}.{1}".format(self.url.split('/')[-1].split('.')[0], ext)
+        with open(filepath, 'wb') as f:
+            for response in responses:
+                f.write(response.content)
+
+        if self.ffmpeg:
+            self._ffmpeg(filepath)
+
+    def _get_segments(self):
+        return m3u8.load(self.url, headers=self.session.headers).segments.uri
+
+    @staticmethod
+    def _ffmpeg(path: str):
+        output_path = path.replace('.ts', '.mp4')
+        subprocess.run(["ffmpeg", "-i", path, "-acodec", "copy", "-vcodec", "copy", output_path])
 
 
 class ATDownloader:
@@ -108,7 +129,8 @@ class ATDownloader:
 
     def _download_video(self, url):
         stream_url = VideoParser().get_stream_url(url)
-        VideoDownloader(stream_url).download(self.directory)
+        filepath = self._get_file_name(url)
+        StreamDownloader(stream_url, filepath).download(self.directory)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
@@ -134,6 +156,10 @@ class ATDownloader:
 
             for episode in range(int(start), int(end) + 1):
                 yield episode
+
+    @staticmethod
+    def _get_file_name(url):
+        return url.split('/')[-1].split('?')[0]
 
 
 def main():
