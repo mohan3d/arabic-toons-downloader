@@ -75,9 +75,9 @@ class VideoParser(PageParser):
 class SeriesParser(PageParser):
     def _parse(self, html):
         soup = bs4.BeautifulSoup(html, 'html.parser')
-        series_table = soup.find('table')
+        series_list = soup.findAll('div', attrs={'class': 'col-sm-4 col-xs-6 col-md-2 col-lg-2'})
 
-        return [td.find('a')['href'] for td in series_table.find_all('td')]
+        return ['http://{}/{}'.format(ARABIC_TOONS_HOST, div.find('a')['href']) for div in series_list]
 
     def get_episodes_urls(self, url):
         html = self._html(url)
@@ -85,7 +85,7 @@ class SeriesParser(PageParser):
 
 
 class StreamDownloader:
-    def __init__(self, stream_url: str, filepath: str, workers: int = 16, ffmpeg: bool = False):
+    def __init__(self, stream_url: str, filepath: str, workers: int = 1, ffmpeg: bool = False):
         self.url = stream_url
         self.path = filepath
         self.workers = workers
@@ -130,7 +130,7 @@ class ATDownloader:
     def _download_video(self, url):
         stream_url = VideoParser().get_stream_url(url)
         filepath = self._get_file_name(url)
-        StreamDownloader(stream_url, filepath).download(self.directory)
+        StreamDownloader(stream_url, filepath, workers=16, ffmpeg=True).download(self.directory)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
