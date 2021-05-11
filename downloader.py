@@ -61,15 +61,26 @@ class PageParser:
 
 
 class VideoParser(PageParser):
-    _RX_PAGE_DATA = re.compile(r"document\.write\(unescape\('([^']+)'\)\);")
-    _RX_STREAM_URL = re.compile(r'<source src="(http://[^"]+)" type="application/x-mpegURL">')
+    _STREAM_URL = re.compile(r'<source src="(http://[^"]+)" type="application/x-mpegURL">')
+    _STREAM_TITLE = re.compile(r'<h1 style="padding:15px">([^<]+)</h1>')
 
     def _parse(self, html):
-        return requests.utils.unquote(self._RX_STREAM_URL.search(html).group(1))
+        return self._extract(html, self._STREAM_URL)
 
-    def get_stream_url(self, url):
+    def _parse_title(self, html):
+        return self._extract(html, self._STREAM_TITLE)
+
+    def get_stream_info(self, url):
         html = self._html(url)
-        return self._parse(html)
+        url = self._parse(html)
+        title = self._parse_title(html)
+        title = ' '.join(title.split(' ')[1:]).strip()
+
+        return url, title
+
+    @staticmethod
+    def _extract(html: str, regex: re.Pattern):
+        return requests.utils.unquote(regex.search(html).group(1))
 
 
 class SeriesParser(PageParser):
@@ -96,7 +107,7 @@ class StreamDownloader:
 
     def download(self, directory: str):
         segments = self._get_segments()
-        filepath = os.path.join(directory, self.path) + '.ts'
+        filepath = os.path.join(directory, self.path)
 
         if self.workers and self.workers > 1:
             with concurrent.futures.ProcessPoolExecutor(max_workers=self.workers) as executor:
@@ -115,9 +126,14 @@ class StreamDownloader:
         return m3u8.load(self.url, headers=self.session.headers).segments.uri
 
     @staticmethod
-    def _ffmpeg(path: str):
+    def _ffmpeg(path: str, remove_input=True):
         output_path = path.replace('.ts', '.mp4')
-        subprocess.run(["ffmpeg", "-i", path, "-acodec", "copy", "-vcodec", "copy", output_path])
+
+        subprocess.run(["ffmpeg", "-i", path, "-acodec", "copy", "-vcodec", "copy", output_path],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
+
+        if remove_input:
+            os.remove(path)
 
 
 class ATDownloader:
@@ -128,9 +144,9 @@ class ATDownloader:
             os.makedirs(self.directory)
 
     def _download_video(self, url):
-        stream_url = VideoParser().get_stream_url(url)
-        filepath = self._get_file_name(url)
-        StreamDownloader(stream_url, filepath, workers=16, ffmpeg=True).download(self.directory)
+        stream_url, stream_title = VideoParser().get_stream_info(url)
+        filename = self._get_file_name(stream_title)
+        StreamDownloader(stream_url, filename, workers=16, ffmpeg=True).download(self.directory)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
@@ -158,8 +174,8 @@ class ATDownloader:
                 yield episode
 
     @staticmethod
-    def _get_file_name(url):
-        return url.split('/')[-1].split('?')[0]
+    def _get_file_name(name, ext='ts'):
+        return f'{name}.{ext}'
 
 
 def main():
