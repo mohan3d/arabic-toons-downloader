@@ -96,21 +96,19 @@ class SeriesParser(PageParser):
 
 
 class StreamDownloader:
-    def __init__(self, stream_url: str, filepath: str, workers: int = 1, ffmpeg: bool = False):
+    def __init__(self, stream_url: str, workers: int = 1, ffmpeg: bool = False):
         self.url = stream_url
-        self.path = filepath
         self.workers = workers
         self.ffmpeg = ffmpeg
 
         self.session = requests.session()
         self.session.headers.update(ARABIC_TOONS_USER_AGENT)
 
-    def download(self, directory: str):
+    def download(self, filepath: str):
         segments = self._get_segments()
-        filepath = os.path.join(directory, self.path)
 
         if self.workers and self.workers > 1:
-            with concurrent.futures.ProcessPoolExecutor(max_workers=self.workers) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
                 responses = executor.map(self.session.get, segments)
         else:
             responses = [self.session.get(segment_url) for segment_url in segments]
@@ -145,8 +143,14 @@ class ATDownloader:
 
     def _download_video(self, url):
         stream_url, stream_title = VideoParser().get_stream_info(url)
-        filename = self._get_file_name(stream_title)
-        StreamDownloader(stream_url, filename, workers=16, ffmpeg=True).download(self.directory)
+        filepath = os.path.join(self.directory, self._get_file_name(stream_title))
+
+        for path in [filepath, filepath.replace('.ts', '.mp4')]:
+            if os.path.exists(path):
+                print(f'{path} already exists!')
+                return
+
+        StreamDownloader(stream_url, workers=16, ffmpeg=True).download(filepath)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
