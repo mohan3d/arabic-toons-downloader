@@ -17,6 +17,9 @@ Options:
                                             for faster network and cpu set to 16 or 32
     -p PROCESSES, --processes PROCESSES     Maximum number of processes to be used to download series
                                             for faster network and cpu set to 4 or 8
+    --ffmpeg                                ffmpeg support will result "mp4" files,
+                                            ffmpeg must be already installed in the system
+                                            and accessible.
                                             (n episodes will be downloaded in parallel)
     -h, --help                              Display this message and quit
     --version                               Show program version and quit
@@ -111,6 +114,20 @@ class StreamDownloader:
         self.session.headers.update(ARABIC_TOONS_USER_AGENT)
 
     def download(self, filepath: str):
+        mp4path = filepath.replace('.ts', '.mp4')
+
+        if not os.path.exists(mp4path):
+            if not os.path.exists(filepath):
+                self._download(filepath)
+            else:
+                print(f'{filepath} already exists!')
+
+            if self.ffmpeg:
+                self._ffmpeg(filepath)
+        else:
+            print(f'{mp4path} already exists!')
+
+    def _download(self, filepath):
         segments = self._get_segments()
 
         if self.workers and self.workers > 1:
@@ -122,9 +139,6 @@ class StreamDownloader:
         with open(filepath, 'wb') as f:
             for response in responses:
                 f.write(response.content)
-
-        if self.ffmpeg:
-            self._ffmpeg(filepath)
 
     def _get_segments(self):
         return m3u8.load(self.url, headers=self.session.headers).segments.uri
@@ -141,9 +155,10 @@ class StreamDownloader:
 
 
 class ATDownloader:
-    def __init__(self, directory, workers: int = 1):
-        self.directory = directory
+    def __init__(self, directory, workers: int = 1, ffmpeg: bool = False):
         self.workers = workers
+        self.ffmpeg = ffmpeg
+        self.directory = directory
 
         if self.directory is not None and not os.path.exists(self.directory):
             os.makedirs(self.directory)
@@ -152,12 +167,7 @@ class ATDownloader:
         stream_url, stream_title = VideoParser().get_stream_info(url)
         filepath = os.path.join(self.directory, self._get_file_name(stream_title))
 
-        for path in [filepath, filepath.replace('.ts', '.mp4')]:
-            if os.path.exists(path):
-                print(f'{path} already exists!')
-                return
-
-        StreamDownloader(stream_url, workers=self.workers, ffmpeg=True).download(filepath)
+        StreamDownloader(stream_url, workers=self.workers, ffmpeg=self.ffmpeg).download(filepath)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
@@ -196,9 +206,10 @@ class ATDownloader:
 def main():
     args = docopt.docopt(__doc__, argv=sys.argv[1:], version=__version__)
     segments = args.get('--segments') or DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT
+    ffmpeg_support = args.get('--ffmpeg')
 
-    downloader = ATDownloader(
-        directory=os.path.expanduser(args.get('<directory>') or os.getcwd()), workers=int(segments))
+    downloader = ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()),
+                              workers=int(segments), ffmpeg=ffmpeg_support)
 
     try:
         if args.get('movie'):
