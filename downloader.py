@@ -88,7 +88,7 @@ class VideoParser(PageParser):
         return url, title
 
     @staticmethod
-    def _extract(html: str, regex: re.Pattern):
+    def _extract(html: str, regex):
         return requests.utils.unquote(regex.search(html).group(1))
 
 
