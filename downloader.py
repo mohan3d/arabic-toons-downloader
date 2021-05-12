@@ -13,6 +13,11 @@ Options:
     -e EPISODES, --episodes EPISODES        Maximum number of new files
                                             to download EPISODES must be
                                             in format "2 5 3-7"
+    -s SEGMENTS, --segments SEGMENTS        Number of segments to be downloaded in parallel,
+                                            for faster network and cpu set to 16 or 32
+    -p PROCESSES, --processes PROCESSES     Maximum number of processes to be used to download series
+                                            for faster network and cpu set to 4 or 8
+                                            (n episodes will be downloaded in parallel)
     -h, --help                              Display this message and quit
     --version                               Show program version and quit
 """
@@ -38,12 +43,13 @@ ARABIC_TOONS_USER_AGENT = {
                   'Chrome/90.0.4430.93 Safari/537.36 '
 }
 
+DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT = 4
+DEFAULT_PROCESSES_COUNT = 1
+
 
 class PageParser:
     def __init__(self):
         self.session = requests.session()
-        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:50.0) " \
-                          "Gecko/20100101 Firefox/50.0"
 
         self.session.headers.update({
             **ARABIC_TOONS_USER_AGENT,
@@ -135,8 +141,9 @@ class StreamDownloader:
 
 
 class ATDownloader:
-    def __init__(self, directory):
+    def __init__(self, directory, workers: int = 1):
         self.directory = directory
+        self.workers = workers
 
         if self.directory is not None and not os.path.exists(self.directory):
             os.makedirs(self.directory)
@@ -150,12 +157,12 @@ class ATDownloader:
                 print(f'{path} already exists!')
                 return
 
-        StreamDownloader(stream_url, workers=16, ffmpeg=True).download(filepath)
+        StreamDownloader(stream_url, workers=self.workers, ffmpeg=True).download(filepath)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
 
-    def download_series(self, series_url, specific_episodes=None):
+    def download_series(self, series_url, specific_episodes=None, nproc=1):
         episodes_urls = SeriesParser().get_episodes_urls(series_url)
 
         if specific_episodes:
@@ -163,8 +170,12 @@ class ATDownloader:
             episodes_urls = [url for i, url in enumerate(episodes_urls, 1)
                              if i in parsed_episodes]
 
-        for episode_url in episodes_urls:
-            self._download_video(episode_url)
+        if nproc > 1:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=nproc) as executor:
+                executor.map(self._download_video, episodes_urls)
+        else:
+            for episode_url in episodes_urls:
+                self._download_video(episode_url)
 
     @staticmethod
     def _parse_episodes(episodes_str):
@@ -184,9 +195,10 @@ class ATDownloader:
 
 def main():
     args = docopt.docopt(__doc__, argv=sys.argv[1:], version=__version__)
+    segments = args.get('--segments') or DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT
 
     downloader = ATDownloader(
-        directory=os.path.expanduser(args.get('<directory>') or os.getcwd()))
+        directory=os.path.expanduser(args.get('<directory>') or os.getcwd()), workers=int(segments))
 
     try:
         if args.get('movie'):
@@ -194,8 +206,11 @@ def main():
         elif args.get('episode'):
             downloader.download_movie(args.get('<episode_url>'))
         elif args.get('series'):
+            processes = args.get('--processes') or DEFAULT_PROCESSES_COUNT
+
             downloader.download_series(args.get('<series_url>'),
-                                       args.get('--episodes'))
+                                       args.get('--episodes'),
+                                       nproc=int(processes))
     except KeyboardInterrupt:
         pass
 
