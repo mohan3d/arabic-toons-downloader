@@ -54,13 +54,7 @@ class PageParser:
     def __init__(self):
         self.session = requests.session()
 
-        self.session.headers.update({
-            **ARABIC_TOONS_USER_AGENT,
-            'Accept': 'text/html',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
-            'Host': ARABIC_TOONS_HOST,
-        })
+        self.session.headers.update(ARABIC_TOONS_USER_AGENT)
 
     def _html(self, url):
         return self.session.get(url).content.decode('utf-8')
