@@ -4,8 +4,8 @@
 arabic-toons-downloader - API-less arabic-toons movies and series downloader
 
 Usage:
-    downloader.py movie <movie_url> [<directory>]
-    downloader.py episode <episode_url> [<directory>]
+    downloader.py movie <movie_url> [<directory>] [options]
+    downloader.py episode <episode_url> [<directory>] [options]
     downloader.py series <series_url> [<directory>] [options]
     downloader.py (-h | --help | --version | --usage)
 
@@ -37,7 +37,7 @@ import requests
 
 __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 ARABIC_TOONS_HOST = 'www.arabic-toons.com'
 ARABIC_TOONS_USER_AGENT = {
@@ -67,6 +67,9 @@ class PageParser:
 
     def _parse(self, html):
         raise NotImplementedError()
+
+    def close(self):
+        self.session.close()
 
 
 class VideoParser(PageParser):
@@ -105,20 +108,19 @@ class SeriesParser(PageParser):
 
 
 class StreamDownloader:
-    def __init__(self, stream_url: str, workers: int = 1, ffmpeg: bool = False):
-        self.url = stream_url
+    def __init__(self, workers: int = 1, ffmpeg: bool = False):
         self.workers = workers
         self.ffmpeg = ffmpeg
 
         self.session = requests.session()
         self.session.headers.update(ARABIC_TOONS_USER_AGENT)
 
-    def download(self, filepath: str):
+    def download(self, url, filepath: str):
         mp4path = filepath.replace('.ts', '.mp4')
 
         if not os.path.exists(mp4path):
             if not os.path.exists(filepath):
-                self._download(filepath)
+                self._download(url, filepath)
             else:
                 print(f'{filepath} already exists!')
 
@@ -127,8 +129,8 @@ class StreamDownloader:
         else:
             print(f'{mp4path} already exists!')
 
-    def _download(self, filepath):
-        segments = self._get_segments()
+    def _download(self, url, filepath):
+        segments = self._get_segments(url)
 
         if self.workers and self.workers > 1:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
@@ -140,8 +142,11 @@ class StreamDownloader:
             for response in responses:
                 f.write(response.content)
 
-    def _get_segments(self):
-        return m3u8.load(self.url, headers=self.session.headers).segments.uri
+    def _get_segments(self, url):
+        return m3u8.load(url, headers=self.session.headers).segments.uri
+
+    def close(self):
+        self.session.close()
 
     @staticmethod
     def _ffmpeg(path: str, remove_input=True):
@@ -156,24 +161,26 @@ class StreamDownloader:
 
 class ATDownloader:
     def __init__(self, directory, workers: int = 1, ffmpeg: bool = False):
-        self.workers = workers
-        self.ffmpeg = ffmpeg
         self.directory = directory
 
         if self.directory is not None and not os.path.exists(self.directory):
             os.makedirs(self.directory)
 
+        self._video_parser = VideoParser()
+        self._series_parser = SeriesParser()
+        self._stream_downloader = StreamDownloader(workers=workers, ffmpeg=ffmpeg)
+
     def _download_video(self, url):
-        stream_url, stream_title = VideoParser().get_stream_info(url)
+        stream_url, stream_title = self._video_parser.get_stream_info(url)
         filepath = os.path.join(self.directory, self._get_file_name(stream_title))
 
-        StreamDownloader(stream_url, workers=self.workers, ffmpeg=self.ffmpeg).download(filepath)
+        self._stream_downloader.download(stream_url, filepath)
 
     def download_movie(self, movie_url):
         self._download_video(movie_url)
 
     def download_series(self, series_url, specific_episodes=None, nproc=1):
-        episodes_urls = SeriesParser().get_episodes_urls(series_url)
+        episodes_urls = self._series_parser.get_episodes_urls(series_url)
 
         if specific_episodes:
             parsed_episodes = list(self._parse_episodes(specific_episodes))
@@ -186,6 +193,17 @@ class ATDownloader:
         else:
             for episode_url in episodes_urls:
                 self._download_video(episode_url)
+
+    def close(self):
+        self._series_parser.close()
+        self._video_parser.close()
+        self._stream_downloader.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     @staticmethod
     def _parse_episodes(episodes_str):
@@ -208,20 +226,19 @@ def main():
     segments = args.get('--segments') or DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT
     ffmpeg_support = args.get('--ffmpeg')
 
-    downloader = ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()),
-                              workers=int(segments), ffmpeg=ffmpeg_support)
-
     try:
-        if args.get('movie'):
-            downloader.download_movie(args.get('<movie_url>'))
-        elif args.get('episode'):
-            downloader.download_movie(args.get('<episode_url>'))
-        elif args.get('series'):
-            processes = args.get('--processes') or DEFAULT_PROCESSES_COUNT
+        with ATDownloader(directory=os.path.expanduser(args.get('<directory>') or os.getcwd()), workers=int(segments),
+                          ffmpeg=ffmpeg_support) as downloader:
+            if args.get('movie'):
+                downloader.download_movie(args.get('<movie_url>'))
+            elif args.get('episode'):
+                downloader.download_movie(args.get('<episode_url>'))
+            elif args.get('series'):
+                processes = args.get('--processes') or DEFAULT_PROCESSES_COUNT
 
-            downloader.download_series(args.get('<series_url>'),
-                                       args.get('--episodes'),
-                                       nproc=int(processes))
+                downloader.download_series(args.get('<series_url>'),
+                                           args.get('--episodes'),
+                                           nproc=int(processes))
     except KeyboardInterrupt:
         pass
 
