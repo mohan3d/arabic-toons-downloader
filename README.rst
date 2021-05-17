@@ -25,8 +25,8 @@ Usage
 
 .. code-block:: console
 
-    $ python downloader.py movie <movie_url> [<directory>]
-    $ python downloader.py episode <episode_url> [<directory>]
+    $ python downloader.py movie <movie_url> [<directory>] [options]
+    $ python downloader.py episode <episode_url> [<directory>] [options]
     $ python downloader.py series <series_url> [<directory>] [options]
 
 Examples
