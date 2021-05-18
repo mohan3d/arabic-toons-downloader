@@ -25,8 +25,8 @@ Usage
 
 .. code-block:: console
 
-    $ python downloader.py movie <movie_url> [<directory>]
-    $ python downloader.py episode <episode_url> [<directory>]
+    $ python downloader.py movie <movie_url> [<directory>] [options]
+    $ python downloader.py episode <episode_url> [<directory>] [options]
     $ python downloader.py series <series_url> [<directory>] [options]
 
 Examples
@@ -34,11 +34,26 @@ Examples
 
 .. code-block:: console
 
+    Download Detective Conan movie 04
+    $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html
+
+    Download Detective Conan movie 04 (use segments option, might be faster depending on your connection speed)
+    $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html -s 16
+    $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html -s 32
+
     Download all Legend Tarzan episodes
     $ python downloader.py series http://www.arabic-toons.com/legend-tarzan-1405895019-anime-streaming.html
 
-    Download Detective Conan movie 04
-    $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html
+    Download all Legend Tarzan episodes
+    (use segments option might be faster depending on your connection speed)
+    (use processes option to download n episodes simultaneously)
+    (in this case download 4 episodes at the same time)
+    $ python downloader.py series http://www.arabic-toons.com/legend-tarzan-1405895019-anime-streaming.html -s 16 -p 4
+
+    Download Detective Conan movie 04 - mp4 file using ffmpeg (ffmpeg must be installed and accessible for this script)
+    (--ffmpeg can be used along with other options)
+    $ python downloader.py movie http://www.arabic-toons.com/conan-film-23797-movies-streaming.html -s 16 --ffmpeg
+
 
 Docker
 ------
