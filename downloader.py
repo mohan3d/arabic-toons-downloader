@@ -37,7 +37,7 @@ import requests
 
 __author__ = "mohan3d"
 __author_email__ = "mohan3d94@gmail.com"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 ARABIC_TOONS_HOST = 'www.arabic-toons.com'
 ARABIC_TOONS_USER_AGENT = {
@@ -48,6 +48,28 @@ ARABIC_TOONS_USER_AGENT = {
 
 DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT = 4
 DEFAULT_PROCESSES_COUNT = 1
+
+
+def fix_file_name(path):
+    """Returns a valid filename for linux/windows
+
+    https://stackoverflow.com/a/31976060
+    
+    Linux/Unix:
+      / (forward slash)
+
+    Windows:
+      < (less than)
+      > (greater than)
+      : (colon - sometimes works, but is actually NTFS Alternate Data Streams)
+      " (double quote)
+      / (forward slash)
+      \\ (backslash)
+      | (vertical bar or pipe)
+      ? (question mark)
+      * (asterisk)
+    """
+    return re.sub(r'[\\/*?:"<>|]', "-", path)
 
 
 class PageParser:
@@ -68,7 +90,7 @@ class PageParser:
 
 class VideoParser(PageParser):
     _STREAM_URL = re.compile(r'<source src="(http://[^"]+)" type="application/x-mpegURL">')
-    _STREAM_TITLE = re.compile(r'<h1 style="padding:15px">([^<]+)</h1>')
+    _STREAM_TITLE = re.compile(r'<h1 style="padding:15px">([^<]+)<a[^<]+</a></h1>')
 
     def _parse(self, html):
         return self._extract(html, self._STREAM_URL)
@@ -92,7 +114,8 @@ class VideoParser(PageParser):
 class SeriesParser(PageParser):
     def _parse(self, html):
         soup = bs4.BeautifulSoup(html, 'html.parser')
-        series_list = soup.findAll('div', attrs={'class': 'col-sm-4 col-xs-6 col-md-2 col-lg-2'})
+        series_block = soup.find('div', attrs={'class': 'moviesBlocks'})
+        series_list = series_block.find_all('div', attrs={'class': 'movie'})
 
         return ['http://{}/{}'.format(ARABIC_TOONS_HOST, div.find('a')['href']) for div in series_list]
 
@@ -137,7 +160,10 @@ class StreamDownloader:
                 f.write(response.content)
 
     def _get_segments(self, url):
-        return m3u8.load(url, headers=self.session.headers).segments.uri
+        m3u = m3u8.load(url, headers=self.session.headers)
+        base_url = m3u.playlists[0].base_uri
+        url = m3u.playlists[0].absolute_uri
+        return [base_url + segment for segment in m3u8.load(url, headers=self.session.headers).segments.uri]
 
     def close(self):
         self.session.close()
@@ -166,7 +192,9 @@ class ATDownloader:
 
     def _download_video(self, url):
         stream_url, stream_title = self._video_parser.get_stream_info(url)
-        filepath = os.path.join(self.directory, self._get_file_name(stream_title))
+        filename = self._get_file_name(stream_title)
+        filename = fix_file_name(filename)
+        filepath = os.path.join(self.directory, filename)
 
         self._stream_downloader.download(stream_url, filepath)
 

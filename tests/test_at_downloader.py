@@ -15,13 +15,16 @@ class TestVideoParser(unittest.TestCase):
         video_parser.get_stream_url = video_parser.get_stream_info
 
         cases = [
-            ('http://www.arabic-toons.com/legend-tarzan-1405895019-24796.html', 'legend_tarzan_05.mp4/index.m3u8',
+            ('http://www.arabic-toons.com/legend-tarzan-1405895019-24796.html', 'legend_tarzan_05.mp4/playlist.m3u8',
              'اسطورة طرزان الحلقة 5'),
-            ('http://www.arabic-toons.com/al7deqa-alseria-1405898769-24316.html', 'al7deqa_alseria_18.mp4/index.m3u8',
-             'الحديقة السرية الحلقة 18'),
-            ('http://www.arabic-toons.com/dai-1405896719-24551.html', 'dai_39.mp4/index.m3u8', 'داي الشجاع الحلقة 39'),
-            ('http://www.arabic-toons.com/papay-1405900079-24109.html', 'papay_11.mp4/index.m3u8', 'باباي الحلقة 11'),
-            ('http://www.arabic-toons.com/beyblade-s2-1467019937-24996.html', 'beyblade_s2_23.mp4/index.m3u8',
+            (
+            'http://www.arabic-toons.com/al7deqa-alseria-1405898769-24316.html', 'al7deqa_alseria_18.mp4/playlist.m3u8',
+            'الحديقة السرية الحلقة 18'),
+            ('http://www.arabic-toons.com/dai-1405896719-24551.html', 'dai_39.mp4/playlist.m3u8',
+             'داي الشجاع الحلقة 39'),
+            (
+            'http://www.arabic-toons.com/papay-1405900079-24109.html', 'papay_11.mp4/playlist.m3u8', 'باباي الحلقة 11'),
+            ('http://www.arabic-toons.com/beyblade-s2-1467019937-24996.html', 'beyblade_s2_23.mp4/playlist.m3u8',
              'بي بليد الموسم 2 الحلقة 23'),
         ]
 
