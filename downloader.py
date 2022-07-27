@@ -68,7 +68,7 @@ class PageParser:
 
 class VideoParser(PageParser):
     _STREAM_URL = re.compile(r'<source src="(http://[^"]+)" type="application/x-mpegURL">')
-    _STREAM_TITLE = re.compile(r'<h1 style="padding:15px">([^<]+)</h1>')
+    _STREAM_TITLE = re.compile(r'<h1 style="padding:15px">([^<]+)<a[^<]+</a></h1>')
 
     def _parse(self, html):
         return self._extract(html, self._STREAM_URL)
@@ -92,7 +92,8 @@ class VideoParser(PageParser):
 class SeriesParser(PageParser):
     def _parse(self, html):
         soup = bs4.BeautifulSoup(html, 'html.parser')
-        series_list = soup.findAll('div', attrs={'class': 'col-sm-4 col-xs-6 col-md-2 col-lg-2'})
+        series_block = soup.find('div', attrs={'class': 'moviesBlocks'})
+        series_list = series_block.find_all('div', attrs={'class': 'movie'})
 
         return ['http://{}/{}'.format(ARABIC_TOONS_HOST, div.find('a')['href']) for div in series_list]
 
@@ -137,7 +138,10 @@ class StreamDownloader:
                 f.write(response.content)
 
     def _get_segments(self, url):
-        return m3u8.load(url, headers=self.session.headers).segments.uri
+        m3u = m3u8.load(url, headers=self.session.headers)
+        base_url = m3u.playlists[0].base_uri
+        url = m3u.playlists[0].absolute_uri
+        return [base_url + segment for segment in m3u8.load(url, headers=self.session.headers).segments.uri]
 
     def close(self):
         self.session.close()
