@@ -50,6 +50,28 @@ DEFAULT_SIMULTANEOUS_SEGMENTS_COUNT = 4
 DEFAULT_PROCESSES_COUNT = 1
 
 
+def fix_file_name(path):
+    """Returns a valid filename for linux/windows
+
+    https://stackoverflow.com/a/31976060
+    
+    Linux/Unix:
+      / (forward slash)
+
+    Windows:
+      < (less than)
+      > (greater than)
+      : (colon - sometimes works, but is actually NTFS Alternate Data Streams)
+      " (double quote)
+      / (forward slash)
+      \\ (backslash)
+      | (vertical bar or pipe)
+      ? (question mark)
+      * (asterisk)
+    """
+    return re.sub(r'[\\/*?:"<>|]', "-", path)
+
+
 class PageParser:
     def __init__(self):
         self.session = requests.session()
@@ -170,7 +192,9 @@ class ATDownloader:
 
     def _download_video(self, url):
         stream_url, stream_title = self._video_parser.get_stream_info(url)
-        filepath = os.path.join(self.directory, self._get_file_name(stream_title))
+        filename = self._get_file_name(stream_title)
+        filename = fix_file_name(filename)
+        filepath = os.path.join(self.directory, filename)
 
         self._stream_downloader.download(stream_url, filepath)
 
